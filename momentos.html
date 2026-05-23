@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+<title>Momentos Únicos — MexxicanMx</title>
+<link rel="icon" type="image/png" href="gorro.ico">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg:         #080808;
+    --surface:    #111010;
+    --card:       #181614;
+    --border:     #252220;
+    --gold:       #c9a84c;
+    --gold-light: #e8c96a;
+    --gold-dim:   rgba(201,168,76,0.12);
+    --cream:      #f5ede0;
+    --muted:      #7a6f5e;
+    --error:      #e05c5c;
+    --success:    #5cb87a;
+    --radius-card: 22px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--bg);
+    color: var(--cream);
+    font-family: 'DM Sans', sans-serif;
+    overflow-x: hidden;
+    height: 100%;
+    overscroll-behavior: none;
+  }
+
+  /* ─── GRAIN TEXTURE ─── */
+  body::after {
+    content: '';
+    position: fixed; inset: 0; pointer-events: none; z-index: 9999;
+    opacity: 0.025;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* ─── AMBIENT GLOW ─── */
+  .ambient {
+    position: fixed; pointer-events: none; z-index: 0; border-radius: 50%;
+    filter: blur(90px); opacity: 0.06;
+  }
+  .ambient-1 {
+    width: 500px; height: 300px;
+    background: var(--gold);
+    top: -80px; left: 50%; transform: translateX(-50%);
+  }
+  .ambient-2 {
+    width: 300px; height: 300px;
+    background: #8b5e2a;
+    bottom: 20%; right: -100px;
+  }
+
+  /* ─── TOP HEADER ─── */
+  .top-bar {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    padding: 0.9rem 1.3rem;
+    display: flex; align-items: center; justify-content: space-between;
+    background: linear-gradient(to bottom, rgba(8,8,8,0.96) 0%, rgba(8,8,8,0) 100%);
+  }
+
+  .top-icon-btn {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.10);
+    backdrop-filter: blur(12px);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: all 0.2s; color: var(--cream);
+    font-size: 1rem;
+  }
+  .top-icon-btn:hover { background: rgba(201,168,76,0.15); border-color: rgba(201,168,76,0.35); }
+
+  .top-logo {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.15rem; font-weight: 700; letter-spacing: -0.01em;
+  }
+  .top-logo sup {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.6rem; font-weight: 800; color: var(--gold);
+    letter-spacing: 0.12em; text-transform: uppercase;
+    vertical-align: super;
+  }
+
+  /* ─── MAIN FEED (scroll vertical tipo TikTok) ─── */
+  .feed-container {
+    position: fixed; inset: 0;
+    overflow-y: scroll;
+    scroll-snap-type: y mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .feed-container::-webkit-scrollbar { display: none; }
+
+  /* ─── CARD FULLSCREEN ─── */
+  .moment-slide {
+    width: 100%; height: 100dvh; min-height: 100svh;
+    scroll-snap-align: start;
+    position: relative;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Imagen de fondo fullscreen */
+  .slide-bg {
+    position: absolute; inset: 0;
+    background-size: cover; background-position: center;
+    background-color: #181614;
+    transition: transform 0.5s ease;
+  }
+  .moment-slide:hover .slide-bg { transform: scale(1.02); }
+
+  /* Gradientes sobre la imagen */
+  .slide-gradient-top {
+    position: absolute; top: 0; left: 0; right: 0; height: 200px;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.72) 0%, transparent 100%);
+    z-index: 2;
+  }
+  .slide-gradient-bottom {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 55%;
+    background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.5) 50%, transparent 100%);
+    z-index: 2;
+  }
+
+  /* Placeholder cuando no hay imagen */
+  .slide-placeholder {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(ellipse at center, #1e1a14 0%, #080808 100%);
+    font-size: 5rem; opacity: 0.2;
+  }
+
+  /* Info del restaurante (arriba izquierda) */
+  .slide-resto-info {
+    position: absolute; top: 70px; left: 1.2rem; right: 4.5rem;
+    z-index: 10; display: flex; align-items: center; gap: 0.75rem;
+  }
+  .resto-avatar {
+    width: 46px; height: 46px; min-width: 46px; border-radius: 50%;
+    background: rgba(201,168,76,0.15);
+    border: 1.5px solid rgba(201,168,76,0.5);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.15rem; font-weight: 700;
+    backdrop-filter: blur(8px);
+  }
+  .resto-name { font-size: 0.92rem; font-weight: 700; color: #fff; text-shadow: 0 1px 6px rgba(0,0,0,0.6); }
+  .resto-location { font-size: 0.72rem; color: rgba(255,255,255,0.65); display: flex; align-items: center; gap: 0.25rem; margin-top: 0.1rem; }
+
+  /* Botón ··· */
+  .slide-more-btn {
+    position: absolute; top: 78px; right: 1.2rem; z-index: 10;
+    width: 36px; height: 36px; border-radius: 50%;
+    background: rgba(255,255,255,0.1); backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: #fff; font-size: 1rem; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    letter-spacing: 0.05em; transition: background 0.2s;
+  }
+  .slide-more-btn:hover { background: rgba(201,168,76,0.25); }
+
+  /* Contenido inferior */
+  .slide-content {
+    position: absolute; bottom: 105px; left: 1.2rem; right: 1.2rem;
+    z-index: 10;
+  }
+
+  /* Estrellas */
+  .slide-stars {
+    display: flex; gap: 2px; margin-bottom: 0.55rem;
+  }
+  .slide-stars span { font-size: 0.78rem; color: var(--gold); }
+  .slide-stars span.empty { color: rgba(201,168,76,0.25); }
+
+  .slide-title {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.4rem, 5vw, 1.85rem); font-weight: 900; line-height: 1.1;
+    color: #fff; text-shadow: 0 2px 16px rgba(0,0,0,0.7);
+    margin-bottom: 0.5rem;
+  }
+
+  .slide-resena {
+    font-size: 0.83rem; color: rgba(255,255,255,0.7);
+    line-height: 1.55; font-weight: 300;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden; margin-bottom: 0.7rem;
+  }
+
+  .slide-device-tag {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    background: rgba(201,168,76,0.15); border: 1px solid rgba(201,168,76,0.3);
+    color: var(--gold-light); font-size: 0.65rem; font-weight: 600;
+    padding: 0.22rem 0.7rem; border-radius: 20px; letter-spacing: 0.06em;
+  }
+
+  /* Badge oficial */
+  .oficial-badge {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    background: rgba(201,168,76,0.2); border: 1px solid rgba(201,168,76,0.5);
+    color: var(--gold-light); font-size: 0.62rem; font-weight: 700;
+    padding: 0.2rem 0.6rem; border-radius: 20px; letter-spacing: 0.07em;
+    margin-left: 0.4rem; text-transform: uppercase;
+  }
+
+  /* ─── BOTTOM NAV (X / + / ❤️) ─── */
+  .bottom-nav {
+    position: absolute; bottom: 0; left: 0; right: 0; z-index: 20;
+    padding: 0.6rem 1.5rem 1.4rem;
+    display: flex; align-items: center; justify-content: space-between;
+    background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 100%);
+  }
+
+  .nav-btn {
+    width: 58px; height: 58px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: all 0.22s; border: none;
+    font-size: 1.3rem; position: relative;
+  }
+
+  .nav-btn-skip {
+    background: rgba(255,255,255,0.08);
+    border: 2px solid rgba(255,255,255,0.25);
+    color: #fff; backdrop-filter: blur(10px);
+  }
+  .nav-btn-skip:hover { background: rgba(224,92,92,0.2); border-color: #e05c5c; transform: scale(1.08); }
+  .nav-btn-skip:active { transform: scale(0.93); }
+
+  .nav-btn-add {
+    width: 66px; height: 66px;
+    background: var(--gold);
+    border: none; color: #0d0c0a;
+    box-shadow: 0 8px 28px rgba(201,168,76,0.45);
+    font-size: 1.6rem; font-weight: 300;
+  }
+  .nav-btn-add:hover { background: var(--gold-light); transform: scale(1.08) rotate(90deg); box-shadow: 0 12px 36px rgba(201,168,76,0.6); }
+  .nav-btn-add:active { transform: scale(0.93); }
+
+  .nav-btn-like {
+    background: rgba(255,255,255,0.08);
+    border: 2px solid rgba(255,255,255,0.25);
+    color: #fff; backdrop-filter: blur(10px);
+    flex-direction: column; gap: 0.1rem;
+  }
+  .nav-btn-like .like-count { font-size: 0.58rem; color: rgba(255,255,255,0.6); font-weight: 500; }
+  .nav-btn-like:hover { border-color: #e05c5c; color: #e05c5c; transform: scale(1.08); }
+  .nav-btn-like.liked { border-color: #e05c5c; color: #e05c5c; background: rgba(224,92,92,0.12); }
+  .nav-btn-like:active { transform: scale(0.93); }
+
+  /* ─── SLIDE DE HÉROE (primera pantalla) ─── */
+  .hero-slide {
+    height: 100dvh; min-height: 100svh;
+    scroll-snap-align: start;
+    position: relative;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    text-align: center;
+    padding: 2rem 1.5rem 7rem;
+    overflow: hidden;
+  }
+
+  .hero-slide::before {
+    content: '';
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse 70% 50% at 50% 20%, rgba(201,168,76,0.12) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 40% at 80% 80%, rgba(201,168,76,0.05) 0%, transparent 50%);
+  }
+
+  /* Líneas decorativas hero */
+  .hero-lines {
+    position: absolute; inset: 0; pointer-events: none; overflow: hidden;
+  }
+  .hero-lines::before {
+    content: '';
+    position: absolute; top: 15%; left: -10%; width: 120%; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(201,168,76,0.15), transparent);
+    transform: rotate(-8deg);
+  }
+  .hero-lines::after {
+    content: '';
+    position: absolute; bottom: 25%; left: -10%; width: 120%; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(201,168,76,0.08), transparent);
+    transform: rotate(-8deg);
+  }
+
+  .hero-badge {
+    display: inline-block;
+    background: rgba(201,168,76,0.1); border: 1px solid rgba(201,168,76,0.3);
+    color: var(--gold); font-size: 0.65rem; font-weight: 600;
+    letter-spacing: 0.16em; text-transform: uppercase;
+    padding: 0.3rem 0.9rem; border-radius: 20px; margin-bottom: 1.2rem;
+    position: relative; z-index: 1;
+  }
+
+  .hero-title {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2.4rem, 9vw, 3.8rem); font-weight: 900; line-height: 1.05;
+    margin-bottom: 0.8rem; position: relative; z-index: 1;
+  }
+  .hero-title em { font-style: italic; color: var(--gold); }
+
+  .hero-sub {
+    font-size: 0.85rem; color: var(--muted); font-weight: 300; line-height: 1.7;
+    max-width: 320px; margin: 0 auto 2rem; position: relative; z-index: 1;
+  }
+
+  /* Stats pills */
+  .hero-stats {
+    display: flex; gap: 0.6rem; justify-content: center; flex-wrap: wrap;
+    position: relative; z-index: 1; margin-bottom: 2rem;
+  }
+  .stat-pill {
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.09);
+    backdrop-filter: blur(8px); border-radius: 20px;
+    padding: 0.5rem 1rem; text-align: center;
+  }
+  .stat-pill .sn {
+    display: block; font-family: 'Playfair Display', serif;
+    font-size: 1.25rem; color: var(--gold-light); font-weight: 700;
+  }
+  .stat-pill .sl { font-size: 0.62rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
+
+  /* Flecha scroll hero */
+  .hero-scroll-hint {
+    position: absolute; bottom: 5.5rem; left: 50%; transform: translateX(-50%);
+    display: flex; flex-direction: column; align-items: center; gap: 0.35rem;
+    color: var(--muted); font-size: 0.65rem; letter-spacing: 0.1em;
+    text-transform: uppercase; animation: bounce 2s ease infinite;
+    z-index: 1;
+  }
+  .hero-scroll-hint .arrow { font-size: 1.2rem; color: var(--gold); opacity: 0.7; }
+  @keyframes bounce { 0%,100%{transform:translateX(-50%) translateY(0)} 50%{transform:translateX(-50%) translateY(6px)} }
+
+  /* ─── MODAL SUBIR ─── */
+  #modal-subir {
+    display: none; position: fixed; inset: 0; z-index: 300;
+    background: rgba(0,0,0,0.92); backdrop-filter: blur(8px);
+    overflow-y: auto; align-items: flex-end; justify-content: center;
+  }
+  #modal-subir.open { display: flex; }
+
+  .modal-sheet {
+    width: 100%; max-width: 520px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 24px 24px 0 0;
+    overflow: hidden;
+    animation: sheetUp 0.38s cubic-bezier(0.34,1.2,0.64,1);
+    max-height: 95dvh; overflow-y: auto;
+  }
+  @keyframes sheetUp {
+    from { opacity:0; transform:translateY(60px); }
+    to   { opacity:1; transform:translateY(0); }
+  }
+
+  .sheet-handle {
+    width: 38px; height: 4px; border-radius: 2px;
+    background: var(--border); margin: 0.8rem auto 0;
+  }
+
+  .modal-header {
+    padding: 1rem 1.4rem 0.9rem; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .modal-header h2 { font-family: 'Playfair Display', serif; font-size: 1.1rem; font-weight: 700; }
+  .btn-cerrar-modal {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: rgba(255,255,255,0.06); border: 1px solid var(--border);
+    color: var(--cream); font-size: 1rem; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; transition: background 0.2s;
+  }
+  .btn-cerrar-modal:hover { background: rgba(224,92,92,0.15); border-color: var(--error); }
+
+  .modal-body { padding: 1.2rem 1.4rem 2rem; }
+
+  .photo-drop {
+    width: 100%; aspect-ratio: 16/10; background: var(--card);
+    border: 2px dashed var(--border); border-radius: 14px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 0.5rem; cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    margin-bottom: 1rem; overflow: hidden; position: relative;
+  }
+  .photo-drop:hover { border-color: var(--gold); background: rgba(201,168,76,0.04); }
+  .photo-drop.has-photo { border-style: solid; border-color: var(--gold); }
+  .photo-drop img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .photo-drop-label { font-size: 0.8rem; color: var(--muted); z-index: 1; pointer-events: none; }
+  .photo-drop-icon { font-size: 2rem; opacity: 0.35; z-index: 1; pointer-events: none; }
+
+  .source-opts { display: flex; gap: 0.45rem; margin-bottom: 1rem; flex-wrap: wrap; }
+  .source-opt {
+    flex: 1; min-width: 72px; padding: 0.5rem 0.4rem;
+    background: var(--card); border: 1px solid var(--border);
+    color: var(--muted); font-family: 'DM Sans', sans-serif;
+    font-size: 0.72rem; font-weight: 500;
+    border-radius: 10px; cursor: pointer; text-align: center; transition: all 0.2s;
+  }
+  .source-opt.selected { background: var(--gold-dim); border-color: var(--gold); color: var(--gold-light); font-weight: 600; }
+
+  .fgroup { margin-bottom: 0.85rem; }
+  .fgroup label {
+    display: block; font-size: 0.65rem; font-weight: 600;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.35rem;
+  }
+  .fgroup input, .fgroup textarea {
+    width: 100%; background: var(--card); border: 1px solid var(--border);
+    color: var(--cream); font-family: 'DM Sans', sans-serif;
+    font-size: 0.88rem; padding: 0.72rem 1rem;
+    border-radius: 10px; outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .fgroup textarea { resize: none; min-height: 70px; }
+  .fgroup input::placeholder, .fgroup textarea::placeholder { color: #3a3028; }
+  .fgroup input:focus, .fgroup textarea:focus {
+    border-color: var(--gold); box-shadow: 0 0 0 3px rgba(201,168,76,0.09);
+  }
+
+  .stars-input { display: flex; gap: 0.4rem; }
+  .stars-input span {
+    font-size: 1.45rem; cursor: pointer; opacity: 0.25;
+    transition: opacity 0.15s, transform 0.15s;
+  }
+  .stars-input span.on { opacity: 1; color: var(--gold); transform: scale(1.1); }
+
+  .upload-progress { display: none; margin-top: 0.5rem; background: var(--border); border-radius: 3px; height: 3px; overflow: hidden; }
+  .upload-progress-bar { height: 100%; background: var(--gold); border-radius: 3px; transition: width 0.3s; width: 0%; }
+
+  .btn-publicar {
+    width: 100%; padding: 0.95rem; background: var(--gold); color: #0d0c0a;
+    font-family: 'DM Sans', sans-serif; font-size: 0.95rem; font-weight: 700;
+    border: none; border-radius: 12px; cursor: pointer;
+    box-shadow: 0 8px 24px rgba(201,168,76,0.3); transition: all 0.2s; margin-top: 0.5rem;
+  }
+  .btn-publicar:hover { background: var(--gold-light); transform: translateY(-1px); }
+  .btn-publicar:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  /* ─── TOAST ─── */
+  #toast {
+    position: fixed; bottom: 7rem; left: 50%;
+    transform: translateX(-50%) translateY(10px);
+    background: rgba(20,18,14,0.95); border: 1px solid rgba(201,168,76,0.3);
+    color: var(--cream); padding: 0.7rem 1.2rem;
+    border-radius: 10px; font-size: 0.84rem;
+    opacity: 0; transition: all 0.3s; z-index: 500;
+    pointer-events: none; white-space: nowrap; max-width: 90vw;
+    backdrop-filter: blur(10px);
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ─── LOADING ─── */
+  .loading-slide {
+    height: 100dvh; scroll-snap-align: start;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .spinner {
+    width: 36px; height: 36px;
+    border: 2px solid var(--border); border-top-color: var(--gold);
+    border-radius: 50%; animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ─── PROGRESS DOTS ─── */
+  .slide-progress {
+    position: absolute; top: 60px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 4px; z-index: 10;
+  }
+  .prog-dot {
+    width: 18px; height: 2px; border-radius: 1px;
+    background: rgba(255,255,255,0.2); transition: all 0.3s;
+  }
+  .prog-dot.active { background: #fff; width: 28px; }
+
+  /* ════════════════════════════════════════════
+     RESPONSIVE — DESKTOP (≥ 768px)
+     Grid de cards, no fullscreen snap
+  ════════════════════════════════════════════ */
+  @media (min-width: 768px) {
+
+    /* Feed es scroll normal, no fixed */
+    .feed-container {
+      position: static;
+      overflow-y: auto;
+      scroll-snap-type: none;
+      height: auto;
+    }
+
+    /* Hero: altura cómoda, no 100vh obligatorio */
+    .hero-slide {
+      height: auto;
+      min-height: 100vh;
+      padding: 7rem 2rem 5rem;
+      scroll-snap-align: none;
+    }
+
+    /* Grid de momentos */
+    #slides-momentos {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 1.4rem;
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 1.5rem 2rem 5rem;
+    }
+
+    /* Cada slide = card con altura fija */
+    .moment-slide {
+      height: 560px;
+      min-height: 0;
+      scroll-snap-align: none;
+      border-radius: 20px;
+      overflow: hidden;
+      margin-bottom: 0;
+    }
+    .moment-slide:hover .slide-bg { transform: scale(1.04); }
+
+    /* Info del restaurante reposicionada */
+    .slide-resto-info { top: 1rem; left: 1rem; right: 3.5rem; }
+    .slide-more-btn   { top: 1rem; right: 1rem; }
+    .slide-content    { bottom: 90px; left: 1.2rem; right: 1.2rem; }
+
+    /* Bottom nav más compacto */
+    .bottom-nav { padding: 0.5rem 1.2rem 1rem; }
+    .nav-btn     { width: 50px; height: 50px; font-size: 1.1rem; }
+    .nav-btn-add { width: 58px; height: 58px; font-size: 1.45rem; }
+
+    /* Loading slide en grid */
+    .loading-slide { height: 300px; grid-column: 1 / -1; scroll-snap-align: none; }
+
+    /* Modal centrado en desktop */
+    #modal-subir { align-items: center; }
+    .modal-sheet {
+      border-radius: 20px;
+      max-height: 90vh;
+      margin: 2rem auto;
+    }
+    .sheet-handle { display: none; }
+
+    /* Top bar con más padding */
+    .top-bar { padding: 1.1rem 2.5rem; }
+
+    /* Hero más grande */
+    .hero-title { font-size: clamp(3rem, 5.5vw, 5.5rem); }
+    .hero-stats { gap: 1rem; }
+    .stat-pill  { padding: 0.8rem 1.6rem; }
+    .stat-pill .sn { font-size: 1.7rem; }
+
+    /* Hint oculto en desktop */
+    .hero-scroll-hint { display: none; }
+
+    /* Toast más bajo */
+    #toast { bottom: 2rem; }
+
+    /* Título slide más grande */
+    .slide-title { font-size: clamp(1.5rem, 2.5vw, 2.1rem); }
+
+    /* Hero badge más ancho */
+    .hero-badge { font-size: 0.72rem; padding: 0.35rem 1.1rem; }
+  }
+
+  /* ─── DESKTOP GRANDE (≥ 1280px) — 3 columnas ─── */
+  @media (min-width: 1280px) {
+    #slides-momentos {
+      grid-template-columns: repeat(3, 1fr);
+      padding: 1.5rem 2.5rem 5rem;
+    }
+    .moment-slide { height: 600px; }
+  }
+
+  /* ─── TABLET (768–1024px) — 2 columnas ─── */
+  @media (min-width: 768px) and (max-width: 1024px) {
+    #slides-momentos { grid-template-columns: repeat(2, 1fr); padding: 1rem 1.5rem 4rem; }
+    .moment-slide { height: 500px; }
+    .hero-slide   { padding: 6rem 1.5rem 4rem; }
+  }
+
+  /* ─── MÓVIL PEQUEÑO (≤ 380px) ─── */
+  @media (max-width: 380px) {
+    .nav-btn     { width: 50px; height: 50px; }
+    .nav-btn-add { width: 58px; height: 58px; }
+    .hero-title  { font-size: 2.1rem; }
+    .stat-pill .sn { font-size: 1rem; }
+    .stat-pill   { padding: 0.38rem 0.7rem; }
+    .modal-body  { padding: 0.85rem 1rem 2rem; }
+    .bottom-nav  { padding: 0.5rem 1rem 1.2rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="ambient ambient-1"></div>
+<div class="ambient ambient-2"></div>
+
+<!-- TOP HEADER (fijo) -->
+<header class="top-bar">
+  <button class="top-icon-btn" onclick="window.location.href='index.html'" title="Inicio">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+  </button>
+  <div class="top-logo">Mexican<sup>Mx</sup></div>
+  <button class="top-icon-btn" onclick="abrirModal()" title="Filtros">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="10" y1="18" x2="14" y2="18"/></svg>
+  </button>
+</header>
+
+<!-- FEED VERTICAL -->
+<div class="feed-container" id="feed-container">
+
+  <!-- SLIDE HÉROE -->
+  <div class="hero-slide">
+    <div class="hero-lines"></div>
+    <div class="hero-badge">⭐ Mexxican.online</div>
+    <h1 class="hero-title">Mexican<em>Mx</em><br>Momentos</h1>
+    <p class="hero-sub">Fotos reales de restaurantes reales. Comparte tu experiencia y descubre los mejores lugares de México.</p>
+
+    <div class="hero-stats">
+      <div class="stat-pill"><span class="sn" id="stat-fotos">—</span><span class="sl">Fotos</span></div>
+      <div class="stat-pill"><span class="sn" id="stat-rest">—</span><span class="sl">Restaurantes</span></div>
+      <div class="stat-pill"><span class="sn" id="stat-likes">—</span><span class="sl">❤️ Likes</span></div>
+    </div>
+
+    <div class="hero-scroll-hint">
+      <span class="arrow">↓</span>
+      <span>Desliza para ver</span>
+    </div>
+
+    <!-- Bottom nav en el hero -->
+    <div class="bottom-nav" style="position:absolute">
+      <button class="nav-btn nav-btn-skip" style="visibility:hidden">✕</button>
+      <button class="nav-btn nav-btn-add" onclick="abrirModal()">+</button>
+      <button class="nav-btn nav-btn-like" style="visibility:hidden">❤️</button>
+    </div>
+  </div>
+
+  <!-- SLIDES DE MOMENTOS (se inyectan aquí) -->
+  <div id="slides-momentos">
+    <div class="loading-slide"><div class="spinner"></div></div>
+  </div>
+
+</div>
+
+<!-- ─── MODAL SUBIR ─── -->
+<div id="modal-subir">
+  <div class="modal-sheet">
+    <div class="sheet-handle"></div>
+    <div class="modal-header">
+      <h2>📸 Comparte tu momento</h2>
+      <button class="btn-cerrar-modal" onclick="cerrarModal()">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <div class="photo-drop" id="photo-drop" onclick="document.getElementById('file-foto').click()">
+        <div class="photo-drop-icon">📷</div>
+        <div class="photo-drop-label">Toca para seleccionar o tomar foto</div>
+      </div>
+      <input type="file" id="file-foto" accept="image/*" capture="environment" style="display:none" onchange="onFotoSelected(this)"/>
+
+      <div style="margin-bottom:0.9rem;">
+        <div style="font-size:0.65rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:0.4rem;">¿Desde dónde tomaste la foto?</div>
+        <div class="source-opts">
+          <button class="source-opt selected" onclick="selectSource(this,'📱 Mi celular')">📱 Celular</button>
+          <button class="source-opt" onclick="selectSource(this,'📸 Cámara digital')">📸 Cámara</button>
+          <button class="source-opt" onclick="selectSource(this,'💻 Mi laptop')">💻 Laptop</button>
+          <button class="source-opt" onclick="selectSource(this,'🤳 Selfie')">🤳 Selfie</button>
+        </div>
+      </div>
+
+      <div class="fgroup">
+        <label>Título de tu foto *</label>
+        <input type="text" id="inp-titulo" placeholder="Ej: ¡La mejor tarde en familia!" maxlength="80"/>
+      </div>
+      <div class="fgroup">
+        <label>Nombre del restaurante *</label>
+        <input type="text" id="inp-lugar" placeholder="Ej: Tacos El Carnal, Puebla"/>
+      </div>
+      <div class="fgroup">
+        <label>Tu nombre (opcional)</label>
+        <input type="text" id="inp-autor" placeholder="Ej: Mariana G."/>
+      </div>
+      <div class="fgroup">
+        <label>Calificación del restaurante</label>
+        <div class="stars-input" id="stars-input">
+          <span onclick="setStars(1)" class="on">★</span>
+          <span onclick="setStars(2)" class="on">★</span>
+          <span onclick="setStars(3)" class="on">★</span>
+          <span onclick="setStars(4)" class="on">★</span>
+          <span onclick="setStars(5)" class="on">★</span>
+        </div>
+      </div>
+      <div class="fgroup">
+        <label>¿Cómo fue tu experiencia?</label>
+        <textarea id="inp-resena" placeholder="Ej: Fuimos con la familia y la pasamos increíble…" maxlength="300"></textarea>
+      </div>
+
+      <div class="upload-progress" id="upload-progress">
+        <div class="upload-progress-bar" id="upload-bar"></div>
+      </div>
+
+      <button class="btn-publicar" id="btn-publicar" onclick="publicarMomento()">✓ &nbsp;Publicar mi momento</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── Estado ──────────────────────────────────────────────────
+let _stars = 5, _fotoFile = null, _device = '📱 Mi celular';
+let _momentos = [];
+let _currentSlide = 0;
+
+// ── Estrellas ──
+function setStars(n) {
+  _stars = n;
+  document.querySelectorAll('#stars-input span').forEach((s,i) => s.classList.toggle('on', i < n));
+}
+function selectSource(el, val) {
+  _device = val;
+  document.querySelectorAll('.source-opt').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+}
+function onFotoSelected(inp) {
+  const file = inp.files[0];
+  if (!file) return;
+  _fotoFile = file;
+  const url = URL.createObjectURL(file);
+  document.getElementById('photo-drop').innerHTML = `<img src="${url}" alt="preview"/>`;
+  document.getElementById('photo-drop').classList.add('has-photo');
+}
+
+// ── Modal ──
+function abrirModal() {
+  document.getElementById('modal-subir').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function cerrarModal() {
+  document.getElementById('modal-subir').classList.remove('open');
+  document.body.style.overflow = '';
+  _fotoFile = null; _stars = 5; _device = '📱 Mi celular';
+  document.getElementById('photo-drop').innerHTML = `
+    <div class="photo-drop-icon">📷</div>
+    <div class="photo-drop-label">Toca para seleccionar o tomar foto</div>`;
+  document.getElementById('photo-drop').classList.remove('has-photo');
+  ['inp-titulo','inp-lugar','inp-autor','inp-resena'].forEach(id => document.getElementById(id).value = '');
+  document.querySelectorAll('.source-opt').forEach((b,i) => b.classList.toggle('selected', i===0));
+  setStars(5);
+}
+document.getElementById('modal-subir').addEventListener('click', function(e) {
+  if (e.target === this) cerrarModal();
+});
+
+// ── Render slide fullscreen ──
+function renderSlide(m, idx) {
+  const starsHtml = Array.from({length:5}).map((_,i) =>
+    `<span class="${i < (m.estrellas||5) ? '' : 'empty'}">★</span>`
+  ).join('');
+
+  const imgStyle = m.imagen_path
+    ? `background-image:url('${m.imagen_path}')`
+    : '';
+
+  const placeholder = !m.imagen_path
+    ? `<div class="slide-placeholder">${m.oficial==1?'⭐':'🍽️'}</div>`
+    : '';
+
+  const oficial = m.oficial==1
+    ? `<span class="oficial-badge">⭐ Mexxican Oficial</span>`
+    : '';
+
+  const liked = m.ya_di_like == 1;
+  const avatarLetter = m.oficial==1 ? '⭐' : (m.autor?.[0]?.toUpperCase() || '?');
+
+  return `
+    <div class="moment-slide" id="slide-${idx}">
+      <div class="slide-bg" style="${imgStyle}"></div>
+      ${placeholder}
+      <div class="slide-gradient-top"></div>
+      <div class="slide-gradient-bottom"></div>
+
+      <!-- Info restaurante -->
+      <div class="slide-resto-info">
+        <div class="resto-avatar">${avatarLetter}</div>
+        <div>
+          <div class="resto-name">${m.autor || 'Anónimo'}${oficial}</div>
+          <div class="resto-location">📍 ${m.lugar}</div>
+        </div>
+      </div>
+
+      <!-- Botón ··· -->
+      <button class="slide-more-btn">···</button>
+
+      <!-- Contenido -->
+      <div class="slide-content">
+        <div class="slide-stars">${starsHtml}</div>
+        <div class="slide-title">${m.titulo}</div>
+        ${m.resena ? `<div class="slide-resena">${m.resena}</div>` : ''}
+        <div class="slide-device-tag">${m.device || '📱 Celular'}</div>
+      </div>
+
+      <!-- Bottom nav -->
+      <div class="bottom-nav">
+        <button class="nav-btn nav-btn-skip" onclick="skipSlide(${idx})" title="Siguiente">✕</button>
+        <button class="nav-btn nav-btn-add" onclick="abrirModal()" title="Compartir">+</button>
+        <button class="nav-btn nav-btn-like ${liked?'liked':''}"
+          id="like-btn-${m.id}"
+          onclick="toggleLike(${m.id}, this)"
+          title="Me gusta">
+          <span class="like-icon">${liked?'❤️':'🤍'}</span>
+          <span class="like-count">${m.likes||0}</span>
+        </button>
+      </div>
+    </div>`;
+}
+
+// ── Skip → scroll al siguiente ──
+function skipSlide(idx) {
+  const next = document.getElementById('slide-' + (idx+1));
+  if (next) next.scrollIntoView({ behavior: 'smooth' });
+  else {
+    // Volver al inicio
+    document.getElementById('feed-container').scrollTo({ top: 0, behavior: 'smooth' });
+  }
+}
+
+// ── Like ──
+async function toggleLike(id, btn) {
+  try {
+    const res  = await fetch(`momentos.php?accion=like&id=${id}`);
+    const json = await res.json();
+    if (json.ok) {
+      btn.classList.toggle('liked', json.liked);
+      btn.querySelector('.like-icon').textContent = json.liked ? '❤️' : '🤍';
+      btn.querySelector('.like-count').textContent = json.likes;
+
+      // 📱 En móvil: al dar like avanza automáticamente al siguiente slide
+      const esMobile = window.innerWidth < 768;
+      if (esMobile && json.liked) {
+        // Animación del corazón antes de avanzar
+        btn.style.transform = 'scale(1.5)';
+        btn.style.transition = 'transform 0.25s cubic-bezier(0.34,1.56,0.64,1)';
+        setTimeout(() => {
+          btn.style.transform = '';
+          const slide = btn.closest('.moment-slide');
+          if (slide) {
+            const idx = parseInt(slide.id.replace('slide-', ''));
+            skipSlide(idx);
+          }
+        }, 420);
+      }
+    }
+  } catch(e) { toast('⚠️ No se pudo registrar el like'); }
+}
+
+// ── Publicar ──
+async function publicarMomento() {
+  const titulo = document.getElementById('inp-titulo').value.trim();
+  const lugar  = document.getElementById('inp-lugar').value.trim();
+  if (!titulo) { toast('⚠️ Escribe el título de tu foto'); return; }
+  if (!lugar)  { toast('⚠️ Escribe el nombre del restaurante'); return; }
+
+  const btn = document.getElementById('btn-publicar');
+  btn.disabled = true; btn.textContent = '⏳ Publicando…';
+
+  const prog = document.getElementById('upload-progress');
+  const bar  = document.getElementById('upload-bar');
+  prog.style.display = 'block'; bar.style.width = '30%';
+
+  const fd = new FormData();
+  fd.append('titulo',    titulo);
+  fd.append('lugar',     lugar);
+  fd.append('autor',     document.getElementById('inp-autor').value.trim() || 'Usuario anónimo');
+  fd.append('device',    _device);
+  fd.append('estrellas', _stars);
+  fd.append('resena',    document.getElementById('inp-resena').value.trim());
+  if (_fotoFile) fd.append('foto', _fotoFile);
+
+  try {
+    bar.style.width = '65%';
+    const res  = await fetch('momentos.php?accion=publicar', { method: 'POST', body: fd });
+    bar.style.width = '90%';
+    const json = await res.json();
+    bar.style.width = '100%';
+    if (json.ok) {
+      cerrarModal();
+      toast('🎉 ¡Tu momento fue publicado!');
+      cargarFeed();
+    } else {
+      toast('⚠️ ' + json.mensaje);
+    }
+  } catch(e) {
+    toast('⚠️ Error de conexión. Intenta de nuevo.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '✓ Publicar mi momento';
+    setTimeout(() => { prog.style.display='none'; bar.style.width='0%'; }, 600);
+  }
+}
+
+// ── Cargar feed ──
+async function cargarFeed() {
+  const container = document.getElementById('slides-momentos');
+
+  try {
+    const [resFeed, resStats] = await Promise.all([
+      fetch('momentos.php?accion=todos'),
+      fetch('momentos.php?accion=stats')
+    ]);
+    const jsonFeed  = await resFeed.json();
+    const jsonStats = await resStats.json();
+
+    // Stats
+    if (jsonStats.ok && jsonStats.data) {
+      document.getElementById('stat-fotos').textContent = jsonStats.data.total_fotos  || 0;
+      document.getElementById('stat-rest').textContent  = jsonStats.data.total_lugares || 0;
+      document.getElementById('stat-likes').textContent = jsonStats.data.total_likes   || 0;
+    }
+
+    if (!jsonFeed.ok || !jsonFeed.data || !jsonFeed.data.length) {
+      container.innerHTML = `
+        <div class="moment-slide" style="display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1rem;text-align:center;padding:2rem">
+          <div style="font-size:4rem;opacity:0.2">🍽️</div>
+          <p style="color:var(--muted);font-size:0.85rem;line-height:1.7">Sé el primero en compartir<br>tu momento gastronómico.</p>
+          <button class="btn-publicar" style="width:auto;padding:0.8rem 2rem" onclick="abrirModal()">📷 Compartir ahora</button>
+        </div>`;
+      return;
+    }
+
+    _momentos = jsonFeed.data;
+    container.innerHTML = _momentos.map((m,i) => renderSlide(m, i)).join('');
+
+  } catch(e) {
+    container.innerHTML = `
+      <div class="moment-slide" style="display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:0.85rem">
+        ⚠️ Error al cargar. Recarga la página.
+      </div>`;
+  }
+}
+
+// ── Toast ──
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('show'), 3200);
+}
+
+// ── Init ──
+cargarFeed();
+</script>
+</body>
+</html>
